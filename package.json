@@ -1,0 +1,28 @@
+{
+  "name": "@starbase/realtime",
+  "version": "0.0.1",
+  "description": "Starbase Realtime Communications",
+  "browser":"realtime.min.js",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starbasealpha/realtime.git"
+  },
+  "keywords": [
+    "realtime",
+    "starbase",
+    "websocket",
+    "webrtc",
+    "real",
+    "time"
+  ],
+  "author": "Mike Fuller",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/starbasealpha/realtime/issues"
+  },
+  "homepage": "https://github.com/starbasealpha/realtime#readme"
+}
