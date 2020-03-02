@@ -79,7 +79,7 @@ function Realtime(sock, WEBRTC) {
       return rtc.call(to, stream);
     },
     "answer":async (call, stream) => {
-      return rtc.answer(call);
+      return rtc.answer(call, stream);
     },
     "users":() => {
       sock.send({"type":"users"});
