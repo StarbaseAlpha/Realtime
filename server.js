@@ -185,6 +185,16 @@ function Realtime(sock, auth=null) {
     });
   };
 
+  const onAuth = async (c, m) => {
+    let user = await auth.verifyToken(m.token||"").then(result=>{return result.user;}).catch(err=>{return null;});
+    if (user) {
+      users[c.id].auth = user.username;
+      c.send({"auth":user.username});
+    } else {
+      c.send({"error":"Authentication token is expired or invalid."});
+    }
+  };
+
   sock.onState((c,s) => {
     if (s === 'connected') {
       onConnect(c);
@@ -198,6 +208,17 @@ function Realtime(sock, auth=null) {
     if (typeof m !== 'object') {
       return null;
     }
+
+    if (auth && !users[c.id].auth && m.type !== 'auth') {
+      c.send({"error":"Authentication is required."});
+      return null;
+    }
+
+    if (auth && m.type === 'auth') {
+      onAuth(c, m);
+      return null;
+    }
+
     if (m.type === 'join' && typeof m.room === 'string') {
       onJoin(c, m);
       return null;

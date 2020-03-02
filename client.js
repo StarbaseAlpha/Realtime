@@ -1,6 +1,6 @@
 'use strict';
 
-function Realtime(sock, WEBRTC) {
+function Realtime(sock, WEBRTC, auth=null) {
 
   const rtc = WEBRTC(sock.send);
   rtc.onState((conn, state)=>{
@@ -16,7 +16,6 @@ function Realtime(sock, WEBRTC) {
       if (onMessage && typeof onMessage === 'function') {
         onMessage({"type":"connected"});
       }
-      sock.send({"type":"whoami"});
     }
     if (s === 'disconnected') {
       if (onMessage && typeof onMessage === 'function') {
@@ -39,13 +38,6 @@ function Realtime(sock, WEBRTC) {
 
     if (m.type === 'answer') {
       return rtc.gotAnswer(m);
-    }
-
-    if (m.error) {
-      if (onMessage && typeof onMessage === 'function') {
-        onMessage(m);
-      }
-      return;
     }
 
   });
@@ -89,6 +81,13 @@ function Realtime(sock, WEBRTC) {
     },
     "room":(room) => {
       sock.send({"type":"room", "room":room});
+    },
+    "auth":async () => {
+      if (auth) {
+        sock.send({"type":"auth", "token":await auth.getToken()});
+        return;
+      }
+      return;
     },
     "calls":rtc.calls,
     "rtc":rtc,
