@@ -1,6 +1,6 @@
 {
   "name": "@starbase/realtime",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Starbase Realtime Communications",
   "browser":"realtime.min.js",
   "main": "index.js",

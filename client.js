@@ -1,8 +1,8 @@
 'use strict';
 
-function Realtime(sock, WEBRTC, auth=null) {
+function Realtime(sock, WEBRTC, auth=null, stun=null) {
 
-  const rtc = WEBRTC(sock.send);
+  const rtc = WEBRTC(sock.send, stun);
   rtc.onState((conn, state)=>{
     if (onMessage && typeof onMessage === 'function') {
       onMessage({"type":"webrtc", conn, state});
