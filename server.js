@@ -189,7 +189,7 @@ function Realtime(sock, auth=null) {
     let user = await auth.verifyToken(m.token||"").then(result=>{return result.user;}).catch(err=>{return null;});
     if (user) {
       users[c.id].auth = user.username;
-      c.send({"auth":user.username});
+      c.send({"type":"auth", "auth":user.username});
     } else {
       c.send({"error":"Authentication token is expired or invalid."});
     }
