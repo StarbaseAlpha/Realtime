@@ -127,40 +127,6 @@ function Realtime(sock, auth=null) {
     }
   };
 
-  const onCall = (c, m) => {
-    if (!users[m.to]) {
-      c.send({"error":"The user does not exist.","to":m.to});
-      return null;
-    } else {
-      let timestamp = Date.now();
-      users[m.to].client.send({
-        "id":m.id,
-        "type":"call",
-        "from":c.id,
-        "call":m.call,
-        "stream":m.stream,
-        "timestamp":timestamp
-      });
-    }
-  };
-
-  const onAnswer = (c, m) => {
-    if (!users[m.to]) {
-      c.send({"error":"The user does not exist.","to":m.to});
-      return null;
-    } else {
-      let timestamp = Date.now();
-      users[m.to].client.send({
-        "id":m.id,
-        "type":"answer",
-        "from":c.id,
-        "answer":m.answer,
-        "stream":m.stream,
-        "timestamp":timestamp
-      });
-    }
-  };
-
   const onChat = (c, m) => {
     if (!rooms[m.room] || !rooms[m.room].users[c.id]) {
       c.send({"error":"You have not joined the room.", "room":m.room});
@@ -229,14 +195,6 @@ function Realtime(sock, auth=null) {
     }
     if (m.type === 'message' && typeof m.to === 'string') {
       onMessage(c, m);
-      return null;
-    }
-    if (m.type === 'call' && typeof m.to === 'string') {
-      onCall(c, m);
-      return null;
-    }
-    if (m.type === 'answer' && typeof m.to === 'string') {
-      onAnswer(c, m);
       return null;
     }
     if (m.type === 'chat' && typeof m.room === 'string') {
