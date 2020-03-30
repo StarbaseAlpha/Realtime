@@ -1,13 +1,6 @@
 'use strict';
 
-function Realtime(sock, WEBRTC, auth=null, stun=null) {
-
-  const rtc = WEBRTC(sock.send, stun);
-  rtc.onState((conn, state)=>{
-    if (onMessage && typeof onMessage === 'function') {
-      onMessage({"type":"webrtc", conn, state});
-    }
-  });
+function Realtime(sock, auth=null) {
 
   let onMessage = null;
 
@@ -34,10 +27,6 @@ function Realtime(sock, WEBRTC, auth=null, stun=null) {
 
     if (onMessage && typeof onMessage === 'function') {
       onMessage(m);
-    }
-
-    if (m.type === 'answer') {
-      return rtc.gotAnswer(m);
     }
 
   });
@@ -67,12 +56,6 @@ function Realtime(sock, WEBRTC, auth=null, stun=null) {
     "message":(to, message) => {
       sock.send({"type":"message","to":to, "message":message});
     },
-    "call":async (to, stream=null) => {
-      return rtc.call(to, stream);
-    },
-    "answer":async (call, stream) => {
-      return rtc.answer(call, stream);
-    },
     "users":() => {
       sock.send({"type":"users"});
     },
@@ -89,8 +72,6 @@ function Realtime(sock, WEBRTC, auth=null, stun=null) {
       }
       return;
     },
-    "calls":rtc.calls,
-    "rtc":rtc,
     "sock":sock
   }
 
