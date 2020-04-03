@@ -3,10 +3,13 @@
 function Realtime(sock, auth=null) {
   let rooms = {};
   let users = {};
+  let usernames = {};
 
   const onConnect = (c) => {
     users[c.id] = {
       "id": c.id,
+      "auth":null,
+      "username":null,
       "client":c,
       "rooms": {}
     };
@@ -22,7 +25,7 @@ function Realtime(sock, auth=null) {
         users[i].client.send({
             "type":"leave",
             "room":room,
-            "user":c.id,
+            "user":{"id":c.id, "username":users[c.id].username},
             "timestamp":timestamp
           });
         }
@@ -30,6 +33,12 @@ function Realtime(sock, auth=null) {
       if (!Object.keys(rooms[room].users).length) {
         delete rooms[room];
       }
+    }
+    if (users[id].username) {
+      delete usernames[users[id].username][c.id];
+    }
+    if (!Object.keys(usernames[users[id].username]).length) {
+      delete usernames[users[id].username];
     }
     delete users[id];
   };
@@ -40,6 +49,9 @@ function Realtime(sock, auth=null) {
     for(let user in users) {
       results[user] = {};
       results[user].id = users[user].id;
+      if (users[user].username) {
+        results[user].username = users[user].username;
+      }
       results[user].rooms = users[user].rooms;
     }
     c.send({"type":"users", "users":results});
@@ -75,14 +87,14 @@ function Realtime(sock, auth=null) {
       c.send({"error":"You are already in the room.", "room":m.room});
       return null;
     }
-    rooms[m.room].users[c.id] = true;
+    rooms[m.room].users[c.id] = {"id":c.id, "username":users[c.id].username};
     users[c.id].rooms[m.room] = true;
     let timestamp = Date.now();
     for(let i in rooms[m.room].users) {
       users[i].client.send({
         "type":"join",
         "room":m.room,
-        "user":c.id,
+        "user":{"id":c.id, "username":users[c.id].username},
         "timestamp":timestamp
       });
     }
@@ -99,14 +111,14 @@ function Realtime(sock, auth=null) {
     c.send({
       "type":"leave",
       "room":m.room,
-      "user":c.id,
+      "user":{"id":c.id, "username":users[c.id].username},
       "timestamp":timestamp
     });
     for(let i in rooms[m.room].users) {
       users[i].client.send({
         "type":"leave",
         "room":m.room,
-        "user":c.id,
+        "user":{"id":c.id, "username":users[c.id].username},
         "timestamp":timestamp
       });
     }
@@ -120,8 +132,8 @@ function Realtime(sock, auth=null) {
       let timestamp = Date.now();
       users[m.to].client.send({
         "type":"message",
-        "from":c.id,
-        "message":(m.message||"").toString(),
+        "from":{"id":c.id, "username":users[c.id].username},
+        "message":m.message||null,
         "timestamp":timestamp
       });
     }
@@ -137,8 +149,8 @@ function Realtime(sock, auth=null) {
       users[i].client.send({
         "type":"chat",
         "room":m.room,
-        "from":c.id,
-        "chat":m.chat||"",
+        "from":{"id":c.id, "username":users[c.id].username},
+        "chat":m.chat||null,
         "timestamp":timestamp
       });
     }
@@ -147,14 +159,58 @@ function Realtime(sock, auth=null) {
   const onWhoAmI = (c, m) => {
     c.send({
       "type":"whoami",
-      "whoami":c.id.toString()
+      "whoami":{
+        "id":c.id, 
+        "username":users[c.id].username
+      }
     });
   };
+
+  const onWhoIs = (c, m) => {
+    if (m.id && typeof m.id === 'string') {
+      if (!users[m.id]) {
+        c.send({"error":"User does not exist.", "whois":m.id});
+        return null;
+      }
+      c.send({
+        "type":"whois",
+        "user": {
+          "id":m.id,
+          "username":users[m.id].username
+        }
+      });
+      return null;
+    }
+
+    if (m.username && typeof m.username === 'string') {
+      if (!usernames[m.username]) {
+        c.send({"error":"User does not exist.", "whois":m.username});
+        return null;
+      }
+      c.send({
+        "type":"whois",
+        "user": {
+          "ids":Array.from(Object.keys(usernames[m.username])),
+          "username":m.username
+        }
+      });
+      return null;
+    }
+
+  };
+
 
   const onAuth = async (c, m) => {
     let user = await auth.verifyToken(m.token||"").then(result=>{return result.user;}).catch(err=>{return null;});
     if (user) {
       users[c.id].auth = user.username;
+      users[c.id].username = user.username;
+      if (user.username) {
+        if (!usernames[user.username]) {
+          usernames[user.username] = {};
+        }
+        usernames[user.username][c.id] = users[c.id];
+      }
       c.send({"type":"auth", "auth":user.username});
     } else {
       c.send({"error":"Authentication token is expired or invalid."});
@@ -217,12 +273,16 @@ function Realtime(sock, auth=null) {
       onWhoAmI(c, m);
       return null;
     }
+    if (m.type.toLowerCase() === 'whois') {
+      onWhoIs(c, m);
+      return null;
+    }
     sock.send({"error":"Your request was invalid."});
     return null;
   });
 
   sock.onError((c,e) => {
-    console.log(c.id,e);
+    return null;
   });
 }
 
