@@ -35,16 +35,17 @@ function Realtime(sock, auth=null) {
       }
     }
     if (users[id].username) {
+      let username = users[id].username;
       delete usernames[users[id].username][c.id];
-    }
-    if (!Object.keys(usernames[users[id].username]).length) {
-      delete usernames[users[id].username];
+      if (usernames[username] && !Object.keys(usernames[username])) {
+        delete usernames[username];
+      }
     }
     delete users[id];
   };
 
   const onListAllUsers = (c, m) => {
-    let keys = Object.keys(users);
+    let msgID = m.msgID.toString() || null;
     let results = {};
     for(let user in users) {
       results[user] = {};
@@ -54,17 +55,19 @@ function Realtime(sock, auth=null) {
       }
       results[user].rooms = users[user].rooms;
     }
-    c.send({"type":"users", "users":results});
+    c.send({"msgID":msgID, "type":"users", "users":results});
     return null;
   };
 
   const onListRoom = (c, m) => {
+    let msgID = m.msgID.toString() || null;
     if (m.room && typeof m.room === 'string') {
       if (!rooms[m.room]) {
-        c.send({"error":"Room does not exist.", "room":m.room});
+        c.send({"msgID":msgID, "error":"Room does not exist.", "room":m.room});
         return null;
       }
       c.send({
+        "msgID":msgID,
         "type":"room",
         "room": m.room,
         "users": rooms[m.room].users
@@ -74,46 +77,62 @@ function Realtime(sock, auth=null) {
   };
 
   const onListAllRooms = (c, m) => {
-    c.send({"type":"rooms", "rooms":rooms});
+    let msgID = m.msgID.toString() || null;
+    c.send({"msgID":msgID, "type":"rooms", "rooms":rooms});
   };
 
   const onJoin = (c, m) => {
+    let msgID = m.msgID.toString() || null;
     if (!rooms[m.room]) {
       rooms[m.room] = {
         "users":{}
       };
     }
     if (rooms[m.room].users[c.id]) {
-      c.send({"error":"You are already in the room.", "room":m.room});
+      c.send({"msgID":msgID, "error":"You are already in the room.", "room":m.room});
       return null;
     }
     rooms[m.room].users[c.id] = {"id":c.id, "username":users[c.id].username};
     users[c.id].rooms[m.room] = true;
     let timestamp = Date.now();
+    c.send({
+      "msgID":msgID,
+          "type":"join",
+          "room":m.room,
+          "user":{"id":c.id, "username":users[c.id].username},
+          "timestamp":timestamp
+   });
+
     for(let i in rooms[m.room].users) {
-      users[i].client.send({
-        "type":"join",
-        "room":m.room,
-        "user":{"id":c.id, "username":users[c.id].username},
-        "timestamp":timestamp
-      });
+      if (i !== c.id) {
+        users[i].client.send({
+          "type":"join",
+          "room":m.room,
+          "user":{"id":c.id, "username":users[c.id].username},
+          "timestamp":timestamp
+        });
+      }
     }
   };
 
   const onLeave = (c, m) => {
+    let msgID = m.msgID.toString() || null;
     if (!rooms[m.room] || !rooms[m.room].users[c.id]) {
-      c.send({"error":"You are not in the room.","room":m.room});
+      c.send({"msgID":msgID, "error":"You are not in the room.","room":m.room});
       return null;
     }
     delete rooms[m.room].users[c.id];
     delete users[c.id].rooms[m.room];
     let timestamp = Date.now();
+
     c.send({
-      "type":"leave",
-      "room":m.room,
-      "user":{"id":c.id, "username":users[c.id].username},
-      "timestamp":timestamp
+      "msgID":msgID,
+        "type":"leave",
+        "room":m.room,
+        "user":{"id":c.id, "username":users[c.id].username},
+        "timestamp":timestamp
     });
+
     for(let i in rooms[m.room].users) {
       users[i].client.send({
         "type":"leave",
@@ -125,8 +144,9 @@ function Realtime(sock, auth=null) {
   };
 
   const onMessage = (c, m) => {
+    let msgID = m.msgID.toString() || null;
     if (!users[m.to]) {
-      c.send({"error":"The user does not exist.","to":m.to});
+      c.send({"msgID":msgID, "error":"The user does not exist.","to":m.to});
       return null;
     } else {
       let timestamp = Date.now();
@@ -136,12 +156,14 @@ function Realtime(sock, auth=null) {
         "message":m.message||null,
         "timestamp":timestamp
       });
+      c.send({"msgID":msgID, "to":m.to, "sent":true});
     }
   };
 
   const onChat = (c, m) => {
+    let msgID = m.msgID.toString() || null;
     if (!rooms[m.room] || !rooms[m.room].users[c.id]) {
-      c.send({"error":"You have not joined the room.", "room":m.room});
+      c.send({"msgID":msgID, "error":"You have not joined the room.", "room":m.room});
       return null;
     }
     let timestamp = Date.now();
@@ -154,10 +176,13 @@ function Realtime(sock, auth=null) {
         "timestamp":timestamp
       });
     }
+    c.send({"msgID":msgID, "room":m.room, "sent":true});
   };
 
   const onWhoAmI = (c, m) => {
+    let msgID = m.msgID.toString() || null;
     c.send({
+      "msgID":msgID,
       "type":"whoami",
       "whoami":{
         "id":c.id, 
@@ -167,12 +192,14 @@ function Realtime(sock, auth=null) {
   };
 
   const onWhoIs = (c, m) => {
+    let msgID = m.msgID.toString() || null;
     if (m.id && typeof m.id === 'string') {
       if (!users[m.id]) {
-        c.send({"error":"User does not exist.", "whois":m.id});
+        c.send({"msgID":msgID, "error":"User does not exist.", "whois":m.id});
         return null;
       }
       c.send({
+        "msgID":msgID,
         "type":"whois",
         "user": {
           "id":m.id,
@@ -184,10 +211,11 @@ function Realtime(sock, auth=null) {
 
     if (m.username && typeof m.username === 'string') {
       if (!usernames[m.username]) {
-        c.send({"error":"User does not exist.", "whois":m.username});
+        c.send({"msgID":msgID, "error":"User does not exist.", "whois":m.username});
         return null;
       }
       c.send({
+        "msgID":msgID,
         "type":"whois",
         "user": {
           "ids":Array.from(Object.keys(usernames[m.username])),
@@ -201,6 +229,7 @@ function Realtime(sock, auth=null) {
 
 
   const onAuth = async (c, m) => {
+    let msgID = m.msgID.toString() || null;
     let user = await auth.verifyToken(m.token||"").then(result=>{return result.user;}).catch(err=>{return null;});
     if (user) {
       users[c.id].auth = user.username;
@@ -211,9 +240,9 @@ function Realtime(sock, auth=null) {
         }
         usernames[user.username][c.id] = users[c.id];
       }
-      c.send({"type":"auth", "auth":user.username});
+      c.send({"msgID":msgID, "type":"auth", "auth":user.username});
     } else {
-      c.send({"error":"Authentication token is expired or invalid."});
+      c.send({"msgID":msgID, "error":"Authentication token is expired or invalid."});
     }
   };
 
@@ -231,8 +260,10 @@ function Realtime(sock, auth=null) {
       return null;
     }
 
+    let msgID = m.msgID.toString() || null;
+
     if (auth && !users[c.id].auth && m.type !== 'auth') {
-      c.send({"error":"Authentication is required."});
+      c.send({"msgID":msgID, "error":"Authentication is required."});
       return null;
     }
 
@@ -277,7 +308,7 @@ function Realtime(sock, auth=null) {
       onWhoIs(c, m);
       return null;
     }
-    sock.send({"error":"Your request was invalid."});
+    sock.send({"msgID":msgID, "error":"Your request was invalid."});
     return null;
   });
 

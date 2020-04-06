@@ -17,6 +17,9 @@ function Realtime(sock, auth=null) {
   let onAuth = null;
   let onAll = null;
 
+  let callbacks = {};
+  let ids = 0;
+
   sock.onState(s=>{
     if (s === 'connected') {
       if (onConnected && typeof onConnected === 'function') {
@@ -50,6 +53,13 @@ function Realtime(sock, auth=null) {
   });
 
   sock.onMessage(async m=>{
+    if (m.msgID && callbacks[m.msgID]) {
+      if (m.error) {
+        callbacks[m.msgID].reject(m);
+      } else {
+        callbacks[m.msgID].resolve(m);
+      }
+    }
 
     if (m.type === 'whoami' && onWhoami && typeof onWhoami === 'function') {
       onWhoami(m);
@@ -146,38 +156,79 @@ function Realtime(sock, auth=null) {
       sock.close();
     },
     "whoami":()=> {
-      sock.send({"type":"whoami"});
+      let msgID = ids++;
+      sock.send({"msgID":msgID, "type":"whoami"});
+      return new Promise((resolve,reject)=>{
+        callbacks[msgID] = {"resolve":resolve, "reject":reject};
+      });
     },
     "whois":(username=null, id=null)=> {
-      sock.send({"type":"whois", "username":username, "id":id});
+      let msgID = ids++;
+      if (id) {
+        id = id.toString();
+      }
+      sock.send({"msgID":msgID, "type":"whois", "username":username, "id":id});
+      return new Promise((resolve,reject)=>{
+        callbacks[msgID] = {"resolve":resolve, "reject":reject};
+      });
     },
     "join":(room) => {
-      sock.send({"type":"join","room":room});
+      let msgID = ids++;
+      sock.send({"msgID":msgID, "type":"join","room":room});
+      return new Promise((resolve,reject)=>{
+        callbacks[msgID] = {"resolve":resolve, "reject":reject};
+      });
     },
     "leave":(room) => {
-      sock.send({"type":"leave","room":room});
+      let msgID = ids++;
+      sock.send({"msgID":msgID, "type":"leave","room":room});
+      return new Promise((resolve,reject)=>{
+        callbacks[msgID] = {"resolve":resolve, "reject":reject};
+      });
     },
     "chat":(room, message) => {
-      sock.send({"type":"chat","room":room, "chat":message});
+      let msgID = ids++;
+      sock.send({"msgID":msgID, "type":"chat","room":room.toString(), "chat":message});
+      return new Promise((resolve,reject)=>{
+        callbacks[msgID] = {"resolve":resolve, "reject":reject};
+      });
     },
     "message":(to, message) => {
-      sock.send({"type":"message","to":to, "message":message});
+      let msgID = ids++;
+      sock.send({"msgID":msgID, "type":"message","to":to.toString(), "message":message});
+      return new Promise((resolve,reject)=>{
+        callbacks[msgID] = {"resolve":resolve, "reject":reject};
+      });
     },
     "users":() => {
-      sock.send({"type":"users"});
+      let msgID = ids++;
+      sock.send({"msgID":msgID, "type":"users"});
+      return new Promise((resolve,reject)=>{
+        callbacks[msgID] = {"resolve":resolve, "reject":reject};
+      });
     },
     "rooms":() => {
-      sock.send({"type":"rooms"});
+      let msgID = ids++;
+      sock.send({"msgID":msgID, "type":"rooms"});
+      return new Promise((resolve,reject)=>{
+        callbacks[msgID] = {"resolve":resolve, "reject":reject};
+      });
     },
     "room":(room) => {
-      sock.send({"type":"room", "room":room});
+      let msgID = ids++;
+      sock.send({"msgID":msgID, "type":"room", "room":room});
+      return new Promise((resolve,reject)=>{
+        callbacks[msgID] = {"resolve":resolve, "reject":reject};
+      });
     },
     "auth":async () => {
+      let msgID = ids++;
       if (auth) {
-        sock.send({"type":"auth", "token":await auth.getToken()});
-        return;
+        sock.send({"msgID":msgID, "type":"auth", "token":await auth.getToken()});
       }
-      return;
+      return new Promise((resolve,reject)=>{
+        callbacks[msgID] = {"resolve":resolve, "reject":reject};
+      });
     },
     "sock":sock
   }
