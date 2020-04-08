@@ -1,6 +1,15 @@
 'use strict';
 
-function Realtime(sock, auth=null) {
+function Realtime(sock, auth=null, options = {
+  "whoami": true,
+  "whois": true,
+  "join":true,
+  "chat":true,
+  "message":true,
+  "rooms":false,
+  "users":false,
+  "room":false
+}) {
   let rooms = {};
   let users = {};
   let usernames = {};
@@ -179,7 +188,7 @@ function Realtime(sock, auth=null) {
     c.send({"msgID":msgID, "room":m.room, "sent":true});
   };
 
-  const onWhoAmI = (c, m) => {
+  const onWhoami = (c, m) => {
     let msgID = m.msgID.toString() || null;
     c.send({
       "msgID":msgID,
@@ -191,7 +200,7 @@ function Realtime(sock, auth=null) {
     });
   };
 
-  const onWhoIs = (c, m) => {
+  const onWhois = (c, m) => {
     let msgID = m.msgID.toString() || null;
     if (m.id && typeof m.id === 'string') {
       if (!users[m.id]) {
@@ -272,44 +281,54 @@ function Realtime(sock, auth=null) {
       return null;
     }
 
-    if (m.type === 'join' && typeof m.room === 'string') {
+    if (options.join && m.type === 'join' && typeof m.room === 'string') {
       onJoin(c, m);
       return null;
     }
+
     if (m.type === 'leave' && typeof m.room === 'string') {
       onLeave(c, m);
       return null;
     }
-    if (m.type === 'message' && typeof m.to === 'string') {
+
+    if (options.message && m.type === 'message' && typeof m.to === 'string') {
       onMessage(c, m);
       return null;
     }
-    if (m.type === 'chat' && typeof m.room === 'string') {
+
+    if (options.chat && m.type === 'chat' && typeof m.room === 'string') {
       onChat(c, m);
       return null;
     }
-    if (m.type === 'users') {
+
+    if (options.users && m.type === 'users') {
       onListAllUsers(c, m);
       return null;
     }
-    if (m.type === 'rooms') {
+
+    if (options.rooms && m.type === 'rooms') {
       onListAllRooms(c, m);
       return null;
     }
-    if (m.type === 'room') {
+
+    if (options.room && m.type === 'room') {
       onListRoom(c, m);
       return null;
     }
-    if (m.type.toLowerCase() === 'whoami') {
-      onWhoAmI(c, m);
+
+    if (options.whoami && m.type === 'whoami') {
+      onWhoami(c, m);
       return null;
     }
-    if (m.type.toLowerCase() === 'whois') {
-      onWhoIs(c, m);
+
+    if (options.whois && m.type === 'whois') {
+      onWhois(c, m);
       return null;
     }
-    sock.send({"msgID":msgID, "error":"Your request was invalid."});
+
+    c.send({"msgID":msgID, "error":"Request was invalid or restricted."});
     return null;
+
   });
 
   sock.onError((c,e) => {
