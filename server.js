@@ -4,8 +4,9 @@ function Realtime(sock, auth=null, options = {
   "whoami": true,
   "whois": true,
   "join":true,
-  "chat":true,
+  "leave":true,
   "message":true,
+  "chat":false,
   "rooms":false,
   "users":false,
   "room":false
@@ -120,7 +121,7 @@ function Realtime(sock, auth=null, options = {
    });
 
     for(let i in rooms[m.room].users) {
-      if (i !== c.id) {
+      if (rooms[m.room].users[i].id !== c.id) {
         users[i].client.send({
           "type":"join",
           "room":m.room,
@@ -293,7 +294,7 @@ function Realtime(sock, auth=null, options = {
       return null;
     }
 
-    if (m.type === 'leave' && typeof m.room === 'string') {
+    if (options.leave && m.type === 'leave' && typeof m.room === 'string') {
       onLeave(c, m);
       return null;
     }
