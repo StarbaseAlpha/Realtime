@@ -1,6 +1,6 @@
 'use strict';
 
-function Realtime(sock, auth=null, options = {
+function Realtime(auth=null, options = {
   "whoami": true,
   "whois": true,
   "join":true,
@@ -244,7 +244,6 @@ function Realtime(sock, auth=null, options = {
 
   };
 
-
   const onAuth = async (c, m) => {
     let msgID = m.msgID.toString() || null;
     let user = await auth.verifyToken(m.token||"").then(result=>{return result.user;}).catch(err=>{return null;});
@@ -263,6 +262,26 @@ function Realtime(sock, auth=null, options = {
     }
   };
 
+  const addClient = (client) => {
+    onConnect(client);
+    client.on('close', (e) => {
+      onDisconnect(client);
+    });
+    client.on('message', (message) => {
+      let msg = null;
+      try {
+        msg = JSON.parse(message);
+      } catch (err) {
+        msg = null;
+      }
+      if (msg) {
+console.log('its working');
+        onClientMessage(client, msg);
+      }
+    });
+  };
+
+/*
   sock.onState((c,s) => {
     if (s === 'connected') {
       onConnect(c);
@@ -271,8 +290,11 @@ function Realtime(sock, auth=null, options = {
       onDisconnect(c);
     }
   });
+*/
 
-  sock.onMessage((c,m) => {
+//  sock.onMessage((c,m) => {
+
+  const onClientMessage = (c,m) => {
     if (typeof m !== 'object') {
       return null;
     }
@@ -337,11 +359,13 @@ function Realtime(sock, auth=null, options = {
     c.send({"msgID":msgID, "error":{"type":"request", "message":"Request was invalid or restricted."}});
     return null;
 
-  });
+  };
 
-  sock.onError((c,e) => {
-    return null;
-  });
+ // sock.onError((c,e) => {
+ //   return null;
+ // });
+
+  return {addClient};
 }
 
 module.exports = Realtime;
