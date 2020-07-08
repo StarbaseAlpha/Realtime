@@ -275,24 +275,10 @@ function Realtime(auth=null, options = {
         msg = null;
       }
       if (msg) {
-console.log('its working');
         onClientMessage(client, msg);
       }
     });
   };
-
-/*
-  sock.onState((c,s) => {
-    if (s === 'connected') {
-      onConnect(c);
-    }
-    if (s === 'disconnected') {
-      onDisconnect(c);
-    }
-  });
-*/
-
-//  sock.onMessage((c,m) => {
 
   const onClientMessage = (c,m) => {
     if (typeof m !== 'object') {
@@ -360,10 +346,6 @@ console.log('its working');
     return null;
 
   };
-
- // sock.onError((c,e) => {
- //   return null;
- // });
 
   return {addClient};
 }
