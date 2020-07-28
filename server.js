@@ -285,6 +285,9 @@ function Realtime(auth=null, options = {
       return null;
     }
 
+    if (!m.msgID) {
+      m.msgID = 0;
+    }
     let msgID = m.msgID.toString() || null;
 
     if (auth && !users[c.id].auth && m.type !== 'auth') {
