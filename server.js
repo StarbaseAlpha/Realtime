@@ -6,10 +6,10 @@ function Realtime(auth=null, options = {
   "join":true,
   "leave":true,
   "message":true,
-  "chat":false,
-  "rooms":false,
-  "users":false,
-  "room":false
+  "chat":true,
+  "rooms":true,
+  "users":true,
+  "room":true
 }) {
   let rooms = {};
   let users = {};
